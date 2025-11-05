@@ -1,6 +1,7 @@
 const express = require("express");
 const cors = require("cors");
 const app = express();
+const admin = require("firebase-admin");
 const port = process.env.PORT || 3000;
 require('dotenv').config()
 // console.log(process.env)
@@ -17,9 +18,47 @@ const client = new MongoClient(uri, {
   },
 });
 
-// middleware
+
+
+// firebase admin sdk
+const serviceAccount = require("./smart-deal-firebase-admin-key.json");
+
+admin.initializeApp({
+  credential: admin.credential.cert(serviceAccount)
+});
+
+// middleware start
 app.use(cors());
 app.use(express.json());
+
+const logger=(req,res,next)=>{
+  console.log("login  information")
+  next()
+}
+const varifyFirebaseToken=async(req,res,next)=>{
+  console.log('in the varify middleware',req.headers.authurization)
+  if(!req.headers.authurization){
+    //do not allow to access
+    return res.status(401).send({message: 'Unauthurized access'})
+  }
+  const token = req.headers.authurization.split(' ')[1]
+  if(!token){
+    return res.status(401).send({message: 'Unauthurized access'})
+  }
+
+  try{
+    const user = await admin.auth().verifyIdToken(token)
+    console.log(user)
+    next()
+  }
+  catch{
+    return res.status(401).send({message: 'Unauthurized access'})
+  }
+
+
+  
+}
+// middleware end
 
 // By default code
 app.get("/", (req, res) => {
@@ -60,6 +99,7 @@ async function run() {
 
     //PRODUCT POST DATA
     app.post("/product", async (req, res) => {
+      console.log('header in the post ',req.headers)
       const newProducts = req.body;
       const result = await productsCollection.insertOne(newProducts);
       res.send(result);
@@ -120,8 +160,9 @@ async function run() {
 
     // Bids related api
     // GET DATA FROM DB
-    app.get("/bids", async (req, res) => {
+    app.get("/bids",logger,varifyFirebaseToken, async (req, res) => {
       const email = req.query.email;
+      console.log('headers:',req.headers)
       const query = {}
       if(email){
         query.buyer_email = email;
