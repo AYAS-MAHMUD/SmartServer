@@ -35,6 +35,8 @@ const logger=(req,res,next)=>{
   console.log("login  information")
   next()
 }
+
+// firebase token varify middleware
 const varifyFirebaseToken=async(req,res,next)=>{
   console.log('in the varify middleware',req.headers.authurization)
   if(!req.headers.authurization){
@@ -207,7 +209,7 @@ async function run() {
       const result = await bidsCollection.deleteOne(query);
       res.send(result);
     })
-    await client.db("admin").command({ ping: 1 });
+    // await client.db("admin").command({ ping: 1 });
     console.log(
       "Pinged your deployment. You successfully connected to MongoDB!"
     );
